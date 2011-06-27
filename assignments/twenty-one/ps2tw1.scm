@@ -1,4 +1,5 @@
 ;;; Scheme code for Twenty-One Simulator [PS2 Fall '90]
+;;; Updated I/O for MIT Scheme 9.x 2011
 
 (define (twenty-one player-strategy house-strategy)
   (let ((house-initial-hand (make-new-hand (deal))))
@@ -48,16 +49,15 @@
 
 (define (hit? your-hand opponent-up-card)
   (newline)
-  (princ "Opponent up card ")
-  (princ opponent-up-card)
+  (display "Opponent up card ")
+  (display opponent-up-card)
   (newline)
-  (princ "Your Total: ")
-  (princ (hand-total your-hand))
+  (display "Your Total: ")
+  (display (hand-total your-hand))
   (newline)
-  (princ "Hit? ")
-  (user-says-y?))
+  (prompt-for-confirmation "Hit? "))
 
 
-(define (user-says-y?) (eq? (read-from-keyboard) 'y))
+
 
 
