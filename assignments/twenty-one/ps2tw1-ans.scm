@@ -1,6 +1,6 @@
 (define (stop-at n)
-  (lambda (your-hand opponent-up-card)
-    (if (>= (hand-total your-hand) n)
+  (lambda (my-hand opponent-up-card)
+    (if (>= (hand-total my-hand) n)
     #f
     #t)))
 
@@ -12,32 +12,39 @@
   (iter reps 0))
 
 (define (watch-player strategy)
-  (lambda (your-hand opponent-up-card)
+  (lambda (my-hand opponent-up-card)
     (display "Your hand: ")
-    (display (hand-total your-hand))
+    (display (hand-total my-hand))
     (display " ")
     (display "Opponent's Up card: ")
     (display opponent-up-card)
     (newline)
-    (if (strategy your-hand opponent-up-card)
+    (if (strategy my-hand opponent-up-card)
 	(display "Hit")
 	(display "Stand"))
     (newline)
     (display "----------")
     (newline)
-    (strategy your-hand opponent-up-card)))
+    (strategy my-hand opponent-up-card)))
 
-(define (louis your-hand opponent-up-card)
-  (cond ((< (hand-total your-hand) 12) #t)
-	((> (hand-total your-hand) 16) #f)
-	((= (hand-total your-hand) 12)
+(define (louis my-hand opponent-up-card)
+  (cond ((< (hand-total my-hand) 12) #t)
+	((> (hand-total my-hand) 16) #f)
+	((= (hand-total my-hand) 12)
 	 (if (< opponent-up-card 4)
 	     #t
 	     #f))
-	((= (hand-total your-hand) 16)
+	((= (hand-total my-hand) 16)
 	 (if (= opponent-up-card 10)
 	     #f
 	     #t))
 	(else (if (> opponent-up-card 6)
 		  #t
 		  #f))))
+
+;; Problem 6
+(define (both first-strategy second-strategy)
+  (lambda (my-hand opponent-up-card)
+    (and (first-strategy my-hand opponent-up-card)
+	 (second-strategy my-hand opponent-up-card))))
+
