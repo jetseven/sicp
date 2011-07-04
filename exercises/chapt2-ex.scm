@@ -63,6 +63,8 @@
   (print-point (end-segment s)))
 
 ;; exercise 2.3
+
+;; Representation 1: define rectable by the top-left and bottom-right  points
 (define (make-rect tl br) (cons tl br))
 
 (define (top-left-rect r) (car r))
@@ -71,12 +73,15 @@
 (define (width-rect r) (- (x-point (bottom-right-rect r)) (x-point (top-left-rect r))))
 (define (height-rect r) (- (y-point (top-left-rect r)) (y-point (bottom-right-rect r))))
 
+;; Representation 2: define rectangle by an origin point and a size, which consists of a width and height
 (define (make-rect origin size) (cons origin size))
 (define (origin-rect r) (car r))
 (define (size-rect r) (cdr r))
+
 (define (width-rect r) (x-point (size-rect r)))
 (define (height-rect r) (y-point (size-rect r)))
 
+;;;; These procedures work with either representation above.
 (define (perimeter-rect r) (+ (* 2 (width-rect r)) (* 2 (height-rect r))))
 (define (area-rect r) (* (width-rect r) (height-rect r)))
 
@@ -181,7 +186,8 @@
 
 (((lambda (f) (lambda (x) (f x)))) (a f)) x)
 
-;;;;;
+;;;;; Extended Exercise
+
 
 (define (add-interval x y)
   (make-interval (+ (lower-bound x) (lower-bound y))
@@ -250,7 +256,7 @@
 
 (mul-interval (make-interval 1 2) (make-interval 4 5))
 
-;;Exercise 2.18
+;;Exercise 2.17
 (define (last-pair l)
   (define (find-last this-pair prev-pair)
     (if (null? (cdr this-pair))
@@ -260,10 +266,12 @@
       '()
       (find-last l (car l))))
 
+;;; Exercise 2.18
 (define (remove-last l)
   (if (null? (cdr l))
-      (list)
+      '()
       (cons (car l) (remove-last (cdr l)))))
+
 (define (reverse l)
   (if (null? (cdr l))
       (list (car l))
@@ -405,52 +413,13 @@
 		    (deep-reverse (remove-last l))))))
 
 ;; 2.28
-(define (fringe l)
-  (define (fringe-onto l r)
-    (cond ((null? l) nil)
-	  ((not (pair? l)) (cons l r))
-	  (else (cons (fringe-onto (car l) (cdr l))
-		      (fringe-onto r '())))))
-  ;(trace fringe-onto)
-  (fringe-onto l '()))
-
-; (fringe-into '((1 2)(3 4)) nil)
-; (cons (fringe-onto '(1 2) '(3 4)) (fringe-onto nil nil))
-; (cons (cons (fringe-onto 1 (2)) (fringe-onto '(3 4) nil)) nil)
-; (cons (cons (cons 1 (2) (cons (fringe-onto 3 '(4)) (cons nil nil)))))	    
-	
 
 (define (fringe l)
-  (define (fringe-onto l r)
-    (cond ((null? l) r)
-	  ((not (pair? l)) (cons l r))
-	  (else (fringe-onto (car l) (fringe-onto (cdr l) '())))))
-  (trace fringe-onto)
-  (fringe-onto l '()))
-
-
-;;pseudocode
-(fringe l)
-(not (pair? (car l))) -> (cons l (fringe (cdr l))
-(pair? (car l)) -> (cons (fringe (car l)) (fringe (cdr l)))
-
-;;append to the rescue
-(define (fringe l)
-  (cond ((null? l) l)
+  (cond ((null? l) '())
 	((not (pair? (car l))) (cons (car l) (fringe (cdr l))))
-	(else (append (fringe (car l)) (fringe (fringe (cdr l)))))))
-
-(define (my-append l1 l2)
-  (
+	(else (append (fringe (car l)) (fringe (cdr l))))))
 
 
-; (cons (leaves of (car l)) (list of leaves of (cdr l))
-; (leaves of (car l)) (last-leaf l)
-
-(define (last-leaf l)
-  (cond ((not (pair? l)) l)
-	((null? (cdr l)) (last-leaf (car l)))
-	(else (last-leaf (cdr l)))))
 
 ;; exer 2.29
 
@@ -482,9 +451,8 @@
       (cond ((null? b) 0)
 	    ((not (pair? structure)) structure)
 	    (else (mobile-weight structure)))))
-					;(mobile-weight mobile))
-					;(branch-weight (right-branch mobile)))
-    (mobile-weight mobile))
+  (mobile-weight mobile))
+
 
 
 (define mobile '((1 1)(2 ((3 3)(4 4)))))
@@ -566,7 +534,7 @@
 
 
 
-2.33
+;; 2.33
 
 (define (accumulate op initial sequence)
   (if (null? sequence)
@@ -597,6 +565,7 @@
 
 ;;2.35
 
+;; Original procedure from 2.2.2
 (define (count-leaves x)
   (cond ((null? x) 0)  
         ((not (pair? x)) 1)
@@ -604,9 +573,9 @@
                  (count-leaves (cdr x))))))
 
 (define (fringe l)
-  (cond ((null? l) l)
+  (cond ((null? l) '())
 	((not (pair? (car l))) (cons (car l) (fringe (cdr l))))
-	(else (append (fringe (car l)) (fringe (fringe (cdr l)))))))
+	(else (append (fringe (car l)) (fringe (cdr l))))))
 
 (define (count-leaves t)
   (accumulate (lambda (x y) (1+ y)) 0 (fringe t)))
@@ -794,3 +763,212 @@ a;;commutative
 (define (reverse l)
   (fold-left (lambda (x y) (cons y x)) '() l))
 
+;;;Graphics
+(define g (make-graphics-device 'x))
+(graphics-set-coordinate-limits g 0 0 1 1)
+(graphics-draw-line g 0 0 100 100)
+
+(graphics-draw-line g 200 200 0 0)
+
+(graphics-draw-line g 0 0 1 0)
+(graphics-draw-line g 0 0 -1 0)
+
+(graphics-draw-text g  0 0 "asdf")
+
+(graphics-clear g)
+(graphics-close g)
+
+(define (repeated proc n)
+  (lambda (x)
+    (if (= n 1)
+	(proc x)
+	(proc ((repeated proc (- n 1)) x)))))
+
+;;exer 2.44
+
+(define (up-split painter n)
+  (if (= n 0)
+      painter
+      (let ((smaller (up-split painter (- n 1))))
+	(below painter (beside smaller smaller)))))
+
+;;exer 2.46
+(define (make-vect x y)
+  (list x y))
+(define (xcor-vect v)
+  (car v))
+(define (ycor-vect v)
+  (cadr v))
+
+(define (add-vect v1 v2)
+  (make-vect (+ (xcor-vect v1)(xcor-vect v2))
+	     (+ (ycor-vect v1)(ycor-vect v2))))
+(define (sub-vect v1 v2)
+  (make-vect (- (xcor-vect v1)(xcor-vect v2))
+	     (- (ycor-vect v1)(ycor-vect v2))))
+(define (scale-vect s v)
+  (make-vect (* (xcor-vect v) s)
+	     (* (ycor-vect v) s)))
+
+;;2.47
+(define (make-frame origin edge1 edge2)
+  (list origin edge1 edge2))
+(define (origin-frame f)
+  (car f))
+(define (edge1-frame f)
+  (cadr f))
+(define (edge2-frame f)
+  (caddr f))
+
+;;2.48
+(define (make-segment start end)
+  (cons start end))
+(define (start-segment s)
+  (car s))
+(define (end-segment s)
+  (cdr s))
+
+(define (make-segment start end)
+  (list start end))
+(define (start-segment s)
+  (car s))
+(define (end-segment s)
+  (cadr s))
+
+;;2.49
+
+(define (frame-coord-map frame)
+  (lambda (v)
+    (add-vect
+     (origin-frame frame)
+     (add-vect (scale-vect (xcor-vect v)
+                           (edge1-frame frame))
+               (scale-vect (ycor-vect v)
+                           (edge2-frame frame))))))
+
+
+(define (segments->painter segment-list)
+  (lambda (frame)
+    (for-each
+     (lambda (segment)
+       (draw-line
+        ((frame-coord-map frame) (start-segment segment))
+        ((frame-coord-map frame) (end-segment segment))))
+     segment-list)))
+
+(define (draw-line start end)
+  (graphics-draw-line g
+		      (xcor-vect start)
+		      (ycor-vect start)
+		      (xcor-vect end)
+		      (ycor-vect end)))
+
+(define (make-circle origin radius)
+  (list origin radius))
+
+(define (origin-circle circle)
+  (car circle))
+(define (radius-circle circle)
+  (cadr circle))
+
+
+(define (midpoint v1 v2)
+  (make-vect (/ (+ (xcor-vect v1) (xcor-vect v2)) 2)
+	     (/ (+ (ycor-vect v1) (ycor-vect v2)) 2)))
+
+(define (circle->painter circle-list)
+  (lambda (frame)
+    (for-each
+     (lambda (circle)
+       (draw-circle
+	((frame-coord-map frame) (origin-circle circle))
+	.1));;;doesn't map radius
+     circle-list)))
+
+(define (circle-painter frame)
+  (let ((circle (make-circle (make-vect 0 0) .1)))
+    ((circle->painter (list circle)) frame)))
+
+
+
+(define (draw-circle origin radius)
+  (graphics-operation g 'fill-circle (xcor-vect origin)
+		      (ycor-vect origin)
+		      radius))
+
+(define f1 (make-frame
+	    (make-vect 0 0)
+	    (make-vect 0 1)
+	    (make-vect 1 0)))
+(define f2 (make-frame
+	    (make-vect 0 0)
+	    (make-vect 0 .5)
+	    (make-vect .5 0)))
+(define f3 (make-frame
+	    (make-vect .2 .2)
+	    (make-vect .4 .25)
+	    (make-vect .25 .4)))
+;; (define (square-painter frame)
+;;   (let ((v1 (origin-frame frame))
+;; 	(v2 (make-vect (xcor-vect (origin-frame frame))
+;; 		       (ycor-vect (edge1-frame frame))))
+;; 	(v3 (make-vect (xcor-vect (edge2-frame frame))
+;; 		       (ycor-vect (edge1-frame frame))))
+;; 	(v4 (make-vect (xcor-vect (edge2-frame frame))
+;; 		       (ycor-vect (origin-frame frame)))))
+;;     (let ((segments (list (make-segment v1 v2)
+;; 			  (make-segment v2 v3)
+;; 			  (make-segment v3 v4)
+;; 			  (make-segment v4 v1))))
+;;       ((segments->painter segments) frame))))
+
+(define (square-painter frame)
+  (let ((v1 (make-vect 0 0))
+	(v2 (make-vect 0 1))
+	(v3 (make-vect 1 1))
+	(v4 (make-vect 1 0)))
+    (let ((segments (list (make-segment v1 v2)
+			  (make-segment v2 v3)
+			  (make-segment v3 v4)
+			  (make-segment v4 v1))))
+      ((segments->painter segments) frame))))
+
+;; (define (x-painter frame)
+;;   (let ((segments (list (make-segment (origin-frame frame)
+;; 				      (make-vect (xcor-vect (edge2-frame frame))
+;; 						 (ycor-vect (edge1-frame frame)))))))
+;;     ((segments->painter segments) frame)))
+
+(define (x-painter frame)
+  (let ((v1 (make-vect 0 0))
+	(v2 (make-vect 1 1))
+	(v3 (make-vect 0 1))
+	(v4 (make-vect 1 0)))
+    (let ((segments (list (make-segment v1 v2)
+			  (make-segment v3 v4))))
+      ((segments->painter segments) frame))))
+
+(define (diamond-painter frame)
+  (let ((v1 (make-vect 0 .5))
+	(v2 (make-vect .5 0))
+	(v3 (make-vect 1 .5))
+	(v4 (make-vect .5 1)))
+    (let ((segments (list (make-segment v1 v2)
+			  (make-segment v2 v3)
+			  (make-segment v3 v4)
+			  (make-segment v4 v1))))
+      ((segments->painter segments) frame))))
+  
+(define (pattern-painter frame)
+  (square-painter frame)
+  (graphics-operation
+  (diamond-painter frame)
+;;Transforms
+(define (transform-painter painter origin corner1 corner2)
+  (lambda (frame)
+    (let ((m (frame-coord-map frame)))
+      (let ((new-origin (m origin)))
+        (painter
+         (make-frame new-origin
+                     (sub-vect (m corner1) new-origin)
+                     (sub-vect (m corner2) new-origin)))))))
