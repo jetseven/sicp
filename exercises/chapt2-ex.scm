@@ -663,7 +663,7 @@ numerical num
 (fold-left / 2 '(3 4 5))
 (/ (/ (/ 2 3) 4) 5)
 
-a;;commutative
+;;commutative
 
 (fold-right / 2 '(5 4 3))
 
@@ -763,26 +763,24 @@ a;;commutative
 (define (reverse l)
   (fold-left (lambda (x y) (cons y x)) '() l))
 
-;;;Graphics
-(define g (make-graphics-device 'x))
-(graphics-set-coordinate-limits g 0 0 1 1)
-(graphics-draw-line g 0 0 100 100)
 
-(graphics-draw-line g 200 200 0 0)
+;;for MIT Scheme graphics
+(define g 
+  (let ((dev (make-graphics-device 'x))) ;;X11
+    (graphics-set-coordinate-limits dev 0 0 1 1)
+    dev))
 
-(graphics-draw-line g 0 0 1 0)
-(graphics-draw-line g 0 0 -1 0)
+(define (draw-line start end)
+  (graphics-draw-line g
+		      (xcor-vect start)
+		      (ycor-vect start)
+		      (xcor-vect end)
+		      (ycor-vect end)))
 
-(graphics-draw-text g  0 0 "asdf")
 
 (graphics-clear g)
 (graphics-close g)
 
-(define (repeated proc n)
-  (lambda (x)
-    (if (= n 1)
-	(proc x)
-	(proc ((repeated proc (- n 1)) x)))))
 
 ;;exer 2.44
 
@@ -791,6 +789,25 @@ a;;commutative
       painter
       (let ((smaller (up-split painter (- n 1))))
 	(below painter (beside smaller smaller)))))
+
+;;Exercise 2.45
+(define (split large small)
+  (lambda (painter n)
+    (if (= n 0)
+	painter
+	(let ((smaller ((split first small) painter (- n 1))))
+	  (large painter (small smaller smaller))))))
+
+(define (split large small)
+  (lambda (painter n)
+    (if (= n 0)
+	painter
+	(let ((smaller ((split large small) painter (- n 1))))
+	  (large painter (small smaller smaller))))))
+
+(define right-split (split beside below))
+ 
+(define up-split (split below beside))
 
 ;;exer 2.46
 (define (make-vect x y)
@@ -801,11 +818,11 @@ a;;commutative
   (cadr v))
 
 (define (add-vect v1 v2)
-  (make-vect (+ (xcor-vect v1)(xcor-vect v2))
-	     (+ (ycor-vect v1)(ycor-vect v2))))
+  (make-vect (+ (xcor-vect v1) (xcor-vect v2))
+	     (+ (ycor-vect v1) (ycor-vect v2))))
 (define (sub-vect v1 v2)
-  (make-vect (- (xcor-vect v1)(xcor-vect v2))
-	     (- (ycor-vect v1)(ycor-vect v2))))
+  (make-vect (- (xcor-vect v1) (xcor-vect v2))
+	     (- (ycor-vect v1) (ycor-vect v2))))
 (define (scale-vect s v)
   (make-vect (* (xcor-vect v) s)
 	     (* (ycor-vect v) s)))
@@ -819,6 +836,19 @@ a;;commutative
   (cadr f))
 (define (edge2-frame f)
   (caddr f))
+
+
+(define (make-frame origin edge1 edge2)
+  (cons origin (cons edge1 edge2)))
+(define (origin-frame f)
+  (car f))
+(define (edge1-frame f)
+  (car (cdr f)))
+(define (edge2-frame f)
+  (cdr (cdr f)))
+
+;; The frame designed to work with the grphics device g defined above
+(define f (make-frame (make-vect 0 0) (make-vect 0 1) (make-vect 1 0)))
 
 ;;2.48
 (define (make-segment start end)
@@ -846,7 +876,7 @@ a;;commutative
                (scale-vect (ycor-vect v)
                            (edge2-frame frame))))))
 
-
+;;from text
 (define (segments->painter segment-list)
   (lambda (frame)
     (for-each
@@ -856,12 +886,13 @@ a;;commutative
         ((frame-coord-map frame) (end-segment segment))))
      segment-list)))
 
-(define (draw-line start end)
-  (graphics-draw-line g
-		      (xcor-vect start)
-		      (ycor-vect start)
-		      (xcor-vect end)
-		      (ycor-vect end)))
+
+;; circles
+(define (length-segment s)
+  (let ((difference-vect (sub-vect (start-segment s) (end-segment s))))
+    (let ((height (ycor-vect difference-vect))
+	  (width (xcor-vect difference-vect)))
+      (sqrt (+ (* height height) (* width width))))))
 
 (define (make-circle origin radius)
   (list origin radius))
@@ -871,35 +902,32 @@ a;;commutative
 (define (radius-circle circle)
   (cadr circle))
 
-
-(define (midpoint v1 v2)
-  (make-vect (/ (+ (xcor-vect v1) (xcor-vect v2)) 2)
-	     (/ (+ (ycor-vect v1) (ycor-vect v2)) 2)))
-
-(define (circle->painter circle-list)
-  (lambda (frame)
-    (for-each
-     (lambda (circle)
-       (draw-circle
-	((frame-coord-map frame) (origin-circle circle))
-	.1));;;doesn't map radius
-     circle-list)))
-
 (define (circle-painter frame)
-  (let ((circle (make-circle (make-vect 0 0) .1)))
-    ((circle->painter (list circle)) frame)))
+  (let ((m (frame-coord-map frame)))
+    (let ((origin (m (make-vect 0.5 0.5)))
+	  (bottom (m (make-vect 0.5 0.0)))
+	  (left (m (make-vect 0.0 0.5))))
+      (let ((r1 (length-segment (make-segment origin bottom)))
+	    (r2 (length-segment (make-segment origin left))))
+	  (draw-circle origin (if (> r1 r2) r2 r1))))))
 
 
 
+;; draw circle based on origin and radius
 (define (draw-circle origin radius)
   (graphics-operation g 'fill-circle (xcor-vect origin)
 		      (ycor-vect origin)
 		      radius))
+;; end circles
+
+(define (diagonal-painter frame)
+   ((segments->painter (list (make-segment (make-vect 0 0) (make-vect 1 1)))) frame))
+
 
 (define f1 (make-frame
 	    (make-vect 0 0)
-	    (make-vect 0 1)
-	    (make-vect 1 0)))
+	    (make-vect 1 0)
+	    (make-vect 0 1)))
 (define f2 (make-frame
 	    (make-vect 0 0)
 	    (make-vect 0 .5)
@@ -908,19 +936,6 @@ a;;commutative
 	    (make-vect .2 .2)
 	    (make-vect .4 .25)
 	    (make-vect .25 .4)))
-;; (define (square-painter frame)
-;;   (let ((v1 (origin-frame frame))
-;; 	(v2 (make-vect (xcor-vect (origin-frame frame))
-;; 		       (ycor-vect (edge1-frame frame))))
-;; 	(v3 (make-vect (xcor-vect (edge2-frame frame))
-;; 		       (ycor-vect (edge1-frame frame))))
-;; 	(v4 (make-vect (xcor-vect (edge2-frame frame))
-;; 		       (ycor-vect (origin-frame frame)))))
-;;     (let ((segments (list (make-segment v1 v2)
-;; 			  (make-segment v2 v3)
-;; 			  (make-segment v3 v4)
-;; 			  (make-segment v4 v1))))
-;;       ((segments->painter segments) frame))))
 
 (define (square-painter frame)
   (let ((v1 (make-vect 0 0))
@@ -933,11 +948,6 @@ a;;commutative
 			  (make-segment v4 v1))))
       ((segments->painter segments) frame))))
 
-;; (define (x-painter frame)
-;;   (let ((segments (list (make-segment (origin-frame frame)
-;; 				      (make-vect (xcor-vect (edge2-frame frame))
-;; 						 (ycor-vect (edge1-frame frame)))))))
-;;     ((segments->painter segments) frame)))
 
 (define (x-painter frame)
   (let ((v1 (make-vect 0 0))
@@ -960,9 +970,11 @@ a;;commutative
       ((segments->painter segments) frame))))
   
 (define (pattern-painter frame)
-  (square-painter frame)
-  (graphics-operation
-  (diamond-painter frame)
+  (x-painter frame)
+  ((shrink-to-upper-right circle-painter) frame)
+  ((transform-painter diamond-painter (make-vect 0 0) (make-vect 0 .5) (make-vect .5 0)) frame)
+  (square-painter frame))
+
 ;;Transforms
 (define (transform-painter painter origin corner1 corner2)
   (lambda (frame)
@@ -972,3 +984,86 @@ a;;commutative
          (make-frame new-origin
                      (sub-vect (m corner1) new-origin)
                      (sub-vect (m corner2) new-origin)))))))
+
+(define (flip-vert painter)
+  (transform-painter painter
+                     (make-vect 0.0 1.0)    ; new origin
+                     (make-vect 1.0 1.0)    ; new end of edge1
+                     (make-vect 0.0 0.0)))  ; new end of edge2
+
+
+(define (shrink-to-upper-right painter)
+  (transform-painter painter
+                     (make-vect 0.5 0.5)
+                     (make-vect 1.0 0.5)
+                     (make-vect 0.5 1.0)))
+
+
+(define (rotate90 painter)
+  (transform-painter painter
+                     (make-vect 1.0 0.0)
+                     (make-vect 1.0 1.0)
+                     (make-vect 0.0 0.0)))
+
+
+(define (squash-inwards painter)
+  (transform-painter painter
+                     (make-vect 0.0 0.0)
+                     (make-vect 0.65 0.35)
+                     (make-vect 0.35 0.65)))
+
+
+(define (beside painter1 painter2)
+  (let ((split-point (make-vect 0.5 0.0)))
+    (let ((paint-left
+           (transform-painter painter1
+                              (make-vect 0.0 0.0)
+                              split-point
+                              (make-vect 0.0 1.0)))
+          (paint-right
+           (transform-painter painter2
+                              split-point
+                              (make-vect 1.0 0.0)
+                              (make-vect 0.5 1.0))))
+      (lambda (frame)
+        (paint-left frame)
+        (paint-right frame)))))
+
+
+;;2.50
+(define (flip-horiz painter)
+  (transform-painter painter
+		     (make-vect 1 0)
+		     (make-vect 0 0)
+		     (make-vect 1 1)))
+
+(define (rotate180 painter)
+  (transform-painter painter
+		     (make-vect 1 1)
+		     (make-vect 0 1)
+		     (make-vect 1 0)))
+
+(define (rotate270 painter)
+  (transform-painter painter
+		     (make-vect 0 1)
+		     (make-vect 0 0)
+		     (make-vect 1 1)))
+
+(define (below painter1 painter2)
+  (let ((split-point (make-vect 0.0 0.5)))
+    (let ((paint-up
+	   (transform-painter painter2
+			      split-point
+			      (make-vect 1.0 .5)
+			      (make-vect 0.0 1.0)))
+	  (paint-down
+	   (transform-painter painter1
+			      (make-vect 0.0 0.0)
+			      (make-vect 1.0 0.0)
+			      split-point)))
+      (lambda (frame)
+	(paint-up frame)
+	(paint-down frame)))))
+
+(define (below painter1 painter2)
+  (rotate90 (beside (rotate270 painter1) (rotate270 painter2))))
