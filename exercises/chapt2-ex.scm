@@ -848,7 +848,7 @@ numerical num
   (cdr (cdr f)))
 
 ;; The frame designed to work with the grphics device g defined above
-(define f (make-frame (make-vect 0 0) (make-vect 0 1) (make-vect 1 0)))
+(define f (make-frame (make-vect 0 0) (make-vect 1 0) (make-vect 0 1)))
 
 ;;2.48
 (define (make-segment start end)
