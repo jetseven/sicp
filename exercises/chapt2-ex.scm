@@ -881,7 +881,7 @@ numerical num
   (lambda (frame)
     (for-each
      (lambda (segment)
-       (draw-line
+(       (draw-line
         ((frame-coord-map frame) (start-segment segment))
         ((frame-coord-map frame) (end-segment segment))))
      segment-list)))
@@ -1067,3 +1067,348 @@ numerical num
 
 (define (below painter1 painter2)
   (rotate90 (beside (rotate270 painter1) (rotate270 painter2))))
+
+;;Exercise 2.54
+
+(define (e? a b)
+  (if (and (pair? a) (pair? b))
+      (and (e? (car a) (car b)) (e? (cdr a) (cdr b)))
+      (eq? a b)))
+
+;;Exercise 2.55
+(car ''abracadabra)
+(car (quote (quote abracadabra)))
+
+;;Exercise 2.56
+
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp)
+         (if (same-variable? exp var) 1 0))
+        ((sum? exp)
+         (make-sum (deriv (addend exp) var)
+                   (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+           (make-product (multiplier exp)
+                         (deriv (multiplicand exp) var))
+           (make-product (deriv (multiplier exp) var)
+                         (multiplicand exp))))
+        (else
+         (error "unknown expression type -- DERIV" exp))))
+
+
+(define (variable? x) (symbol? x))
+
+(define (same-variable? v1 v2)
+  (and (variable? v1) (variable? v2) (eq? v1 v2)))
+
+(define (make-sum a1 a2) (list '+ a1 a2))
+
+(define (make-product m1 m2) (list '* m1 m2))
+
+(define (sum? x)
+  (and (pair? x) (eq? (car x) '+)))
+
+(define (addend s) (cadr s))
+
+(define (augend s) (caddr s))
+
+(define (product? x)
+  (and (pair? x) (eq? (car x) '*)))
+
+(define (multiplier p) (cadr p))
+
+(define (multiplicand p) (caddr p))
+
+;;
+(deriv '(+ x 3) 'x)
+
+(deriv '(* x y) 'x)
+
+(define (exponentiation? x)
+  (and (pair? x) (eq? (car x) '**)))
+
+(define (base x) (cadr x))
+
+(define (exponent x) (caddr x))
+
+(define (make-exponentiation b e)
+  (list '** b e))
+
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp)
+         (if (same-variable? exp var) 1 0))
+        ((sum? exp)
+         (make-sum (deriv (addend exp) var)
+                   (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+           (make-product (multiplier exp)
+                         (deriv (multiplicand exp) var))
+           (make-product (deriv (multiplier exp) var)
+                         (multiplicand exp))))
+	((exponentiation? exp)
+	 (make-product
+	  (make-product (exponent exp)
+			(make-exponentiation (base exp)
+					     (make-sum (exponent exp) -1)))
+	  (deriv (base exp) var)))
+        (else
+         (error "unknown expression type -- DERIV" exp))))
+
+;; With simplification
+
+(define (make-sum a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list '+ a1 a2))))
+
+(define (=number? exp num)
+  (and (number? exp) (= exp num)))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+        ((=number? m1 1) m2)
+        ((=number? m2 1) m1)
+        ((and (number? m1) (number? m2)) (* m1 m2))
+        (else (list '* m1 m2))))
+
+
+
+(deriv '(** x 2) 'x)
+;Value 19: (* 2 (** x 1))
+
+(deriv '(** x 4) 'x)
+;Value 20: (* 4 (** x 3))
+
+(deriv '(** x y) 'x)
+;Value 21: (* y (** x (+ y -1)))
+
+
+;; Exercise 2.57
+
+(define (make-sum a1 a2)
+  (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+        (else (list '+ a1 a2))))
+
+(define (make-sum a1 . a2)
+  (if (null? (cdr a2))
+      (if (sum? (car a2))
+	  (append (list '+ a1) (cdar a2))
+	  (list '+ a1 (car a2)))
+	(append (list '+ a1) a2)))
+
+
+
+(define (simplify-sum s)
+  (define (simplify num sym rest)
+    (cond ((null? rest) (append (list '+ num) sym))
+	  ((number? (car rest)) (simplify (+ num (car rest)) sym (cdr rest)))
+	  ((variable? (car rest)) (simplify num (cons (car rest) sym) (cdr rest)))))
+  (simplify 0 '() (cdr s)))
+	    
+  
+
+(define (augend sum)
+  (let ((rest (cddr sum)))
+    (if (null? (cdr rest))
+	(car rest)
+	(append (make-sum (car rest) (cadr rest)) (cddr rest)))))
+
+
+(define (make-product m1 . m2)
+  (if (null? (cdr m2))
+      (if (product? (car m2))
+	  (append (list '* m1) (cdar m2))
+	  (list '* m1 (car m2)))
+      (append (list '* m1) m2)))
+
+(define (multiplicand p)
+  (let ((rest (cddr p)))
+    (if (null? (cdr rest))
+	(car rest)
+	(append (make-product (car rest) (cadr rest)) (cddr rest)))))
+
+
+(make-sum (addend (make-sum 1 2 3 4)) (augend (make-sum 1 2 3 4)))
+;Value 86: (+ 1 2 3 4)
+
+(make-product (multiplier (make-product 1 2 3 4)) (multiplicand (make-product 1 2 3 4)))
+;Value 92: (* 1 2 3 4)
+
+(deriv '(* x y (+ x 3)) 'x)
+;Value 93: (+ (* x (+ (* y (+ 1 0)) (* 0 (+ x 3)))) (* 1 y (+ x 3)))
+
+(deriv '(* (* x y) (+ x 3)) 'x)
+;Value 94: (+ (* (* x y) (+ 1 0)) (* (+ (* x 0) (* 1 y)) (+ x 3)))
+
+
+;Exercise 2.58 - infix
+
+(define (make-sum a1 a2)
+ (cond ((=number? a1 0) a2)
+        ((=number? a2 0) a1)
+        ((and (number? a1) (number? a2)) (+ a1 a2))
+	(else (list a1 '+ a2))))
+
+(define (make-sum a1 a2)
+  (list a1 '+ a2))
+(define (sum? s)
+  (and (pair? s) (eq? (cadr s) '+)))
+
+(define (addend s)
+  (car s))
+
+(define (augend s)
+  (caddr s))
+
+(define (make-product m1 m2)
+  (cond ((or (=number? m1 0) (=number? m2 0)) 0)
+	((=number? m1 1) m2)
+	((=number? m2 1) m1)
+	((and (number? m1) (number? m2)) (* m1 m2))
+	(else (list m1 '* m2))))
+
+(define (make-product m1 m2)
+  (list m1 '* m2))
+
+(define (product? p)
+  (and (pair? p) (eq? (cadr p) '*)))
+
+(define (multiplier p)
+  (car p))
+
+(define (multiplicand p)
+  (caddr p))
+
+(deriv '(x + (3 * (x + (y + 2)))) 'x)
+;Value: 4
+(deriv '(+ x (* 3 (+ x (+ y 2)))) 'x)
+;Value: 4
+
+;;Exercise 2.59
+
+(define (element-of-set? x set)
+  (cond ((null? set) false)
+        ((equal? x (car set)) true)
+        (else (element-of-set? x (cdr set)))))
+
+
+(define (union-set s1 s2)
+  (cond ((null? s1) s2)
+	((element-of-set? (car s1) s2) (union-set (cdr s1) s2))
+	(else (union-set (cdr s1) (cons (car s1) s2)))))
+
+
+
+
+;;Exercise 2.60
+
+;;same as above
+(define (element-of-set? x set)
+  (cond ((null? x) false)
+	((equal? x (car set)) true)
+	(else (element-of-set? x (cdr set)))))
+     
+  
+(define (adjoin-set x set)
+  (cons x set))
+
+(define (union-set set1 set2)
+  (append set1 set2))
+
+(define (memq item x)
+  (cond ((null? x) '())
+        ((eq? item (car x)) x)
+        (else (memq item (cdr x)))))
+
+(define (union-set s1 s2)
+  (define (union-right set1 set2)
+    (cond ((null? set1) set2)
+	  ((element-of-set? (car set1) set2) (union-set (cdr set1) set2))
+	  (else (cons (car set1) (union-set (cdr set1) set2)))))
+  (union-right (union-right s1 s2) s1))
+
+
+
+(define s1 '(1 1 2 2 3 3))
+(define s2 '(1 2 3))
+
+
+(define (intersection-set set1 set2)
+  (cond ((or (null? set1) (null? set2)) '())
+	((element-of-set? (car set1) set2)
+	 (cons (car set1) (intersection-set (cdr set1) (cdr set2))))
+	(else (intersection-set (cdr set1) set2))))
+
+;;Exercise 2.61
+
+(define (adjoin-set x set)
+  (let ((next (car set)))
+    (cond ((< x next) (cons x set))
+	  ((> x next) (if (null? (cdr set))
+			       (list (car set) x)
+			       (cons next (adjoin-set x (cdr set)))))
+	  (else set))))
+
+;;Exercise 2.62
+
+(define (union-set set1 set2)
+(if (or (null? set1) (null? set2)) '()
+  (let ((x1 (car set1)) (x2 (car set2)))
+    (cond ((= x1 x2) (cons x1 (union-set (cdr set1) (cdr set2))))
+	  ((< x1 x2) (union-set (cdr set1) set2))
+	  ((> x1 x2) (union-set set1 (cdr set2)))))))
+
+
+;; 2.63
+
+(define (entry tree) (car tree))
+(define (left-branch tree) (cadr tree))
+(define (right-branch tree) (caddr tree))
+(define (make-tree entry left right)
+  (list entry left right))
+
+(define (element-of-set? x set)
+  (cond ((null? set) false)
+        ((= x (entry set)) true)
+        ((< x (entry set))
+         (element-of-set? x (left-branch set)))
+        ((> x (entry set))
+         (element-of-set? x (right-branch set)))))
+
+(define (adjoin-set x set)
+  (cond ((null? set) (make-tree x '() '()))
+        ((= x (entry set)) set)
+        ((< x (entry set))
+         (make-tree (entry set) 
+                    (adjoin-set x (left-branch set))
+                    (right-branch set)))
+        ((> x (entry set))
+         (make-tree (entry set)
+                    (left-branch set)
+                    (adjoin-set x (right-branch set))))))
+
+
+(define (tree->list-1 tree)
+  (if (null? tree)
+      '()
+      (append (tree->list-1 (left-branch tree))
+              (cons (entry tree)
+                    (tree->list-1 (right-branch tree))))))
+
+(define (tree->list-2 tree)
+  (define (copy-to-list tree result-list)
+    (if (null? tree)
+        result-list
+        (copy-to-list (left-branch tree)
+                      (cons (entry tree)
+                            (copy-to-list (right-branch tree)
+                                          result-list)))))
+  (copy-to-list tree '()))
+
